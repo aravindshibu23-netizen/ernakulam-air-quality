@@ -5,7 +5,7 @@ A web application for visualizing air pollution concentrations
 Sentinel-5P TROPOMI satellite data via Google Earth Engine.
 
 ## Live Site
-👉 https://[your-github-username].github.io/ernakulam-air-quality
+👉 https://aravindshibu23-netizen.github.io/ernakulam-air-quality
 
 ## Features
 - Interactive live map powered by Google Earth Engine
