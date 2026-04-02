@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ernakulam Air Quality Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* =====================
+       RESET & VARIABLES
+    ===================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0e17;
+      --surface:   #111827;
+      --border:    #1e2d40;
+      --accent:    #00e5ff;
+      --accent2:   #7c3aed;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --no2:       #3b82f6;
+      --co:        #10b981;
+      --so2:       #f59e0b;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background:  var(--bg);
+      color:       var(--text);
+      font-family: var(--font-mono);
+      min-height:  100vh;
+      overflow-x:  hidden;
+    }
+
+    /* =====================
+       ANIMATED GRID BG
+    ===================== */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* =====================
+       NAV
+    ===================== */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+
+    .nav-logo span { color: var(--text); }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--accent); }
+
+    /* =====================
+       HERO
+    ===================== */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      border-radius: 2px;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero-title {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: clamp(2.5rem, 8vw, 6rem);
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .hero-title .line2 {
+      color: var(--accent);
+      display: block;
+    }
+
+    .hero-subtitle {
+      max-width: 560px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.8;
+      margin-bottom: 3rem;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.8rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      background: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,229,255,0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    /* =====================
+       STATS BAR
+    ===================== */
+    .stats-bar {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-item {
+      background: var(--surface);
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: var(--font-head);
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .stat-item:nth-child(1) .stat-value { color: var(--no2); }
+    .stat-item:nth-child(2) .stat-value { color: var(--co); }
+    .stat-item:nth-child(3) .stat-value { color: var(--so2); }
+
+    /* =====================
+       APP SECTION
+    ===================== */
+    .section {
+      position: relative;
+      z-index: 1;
+      padding: 5rem 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .section-num {
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+    }
+
+    .section-title {
+      font-family: var(--font-head);
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .app-container {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+
+    .app-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red    { background: #ef4444; }
+    .dot-yellow { background: #eab308; }
+    .dot-green  { background: #22c55e; }
+
+    .app-url {
+      flex: 1;
+      margin-left: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .app-iframe {
+      width: 100%;
+      height: 700px;
+      border: none;
+      display: block;
+    }
+
+    /* =====================
+       ABOUT SECTION
+    ===================== */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    .about-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .about-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      color: var(--accent);
+    }
+
+    .card-text {
+      font-size: 0.8rem;
+      line-height: 1.8;
+      color: var(--muted);
+    }
+
+    /* =====================
+       POLLUTANTS SECTION
+    ===================== */
+    .pollutants-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .pollutant-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+
+    .pollutant-card:hover { transform: translateY(-4px); }
+
+    .pollutant-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .pollutant-card.no2::before  { background: var(--no2); }
+    .pollutant-card.co::before   { background: var(--co); }
+    .pollutant-card.so2::before  { background: var(--so2); }
+
+    .pollutant-symbol {
+      font-family: var(--font-head);
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      line-height: 1;
+    }
+
+    .pollutant-card.no2  .pollutant-symbol { color: var(--no2); }
+    .pollutant-card.co   .pollutant-symbol { color: var(--co); }
+    .pollutant-card.so2  .pollutant-symbol { color: var(--so2); }
+
+    .pollutant-name {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .pollutant-desc {
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    /* =====================
+       TIMELINE SECTION
+    ===================== */
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .timeline-item {
+      background: var(--surface);
+      padding: 2.5rem 2rem;
+      position: relative;
+    }
+
+    .timeline-year {
+      font-family: var(--font-head);
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--border);
+      margin-bottom: 1rem;
+      line-height: 1;
+    }
+
+    .timeline-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .timeline-title {
+      font-family: var(--font-head);
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+    }
+
+    .timeline-text {
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    /* =====================
+       TEAM SECTION
+    ===================== */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+
+    .team-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .team-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+
+    .team-avatar {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-head);
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: white;
+      margin: 0 auto 1rem;
+    }
+
+    .team-name {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .team-id {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    /* =====================
+       FOOTER
+    ===================== */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .footer-text {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.8;
+      max-width: 500px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .footer-bottom {
+      font-size: 0.7rem;
+      color: var(--muted);
+      opacity: 0.5;
+    }
+
+    /* =====================
+       DIVIDER
+    ===================== */
+    .divider {
+      position: relative;
+      z-index: 1;
+      height: 1px;
+      background: var(--border);
+      margin: 0 2rem;
+    }
+
+    /* =====================
+       ANIMATIONS
+    ===================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* =====================
+       RESPONSIVE
+    ===================== */
+    @media (max-width: 768px) {
+      .about-grid,
+      .pollutants-grid,
+      .timeline,
+      .team-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-links { display: none; }
+
+      .app-iframe { height: 500px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">AIR<span>QUAL</span></div>
+    <ul class="nav-links">
+      <li><a href="#app">Live Map</a></li>
+      <li><a href="#pollutants">Pollutants</a></li>
+      <li><a href="#study">Study</a></li>
+      <li><a href="#team">Team</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-tag">Sentinel-5P · TROPOMI · GIS · Remote Sensing</div>
+    <h1 class="hero-title">
+      Ernakulam
+      <span class="line2">Air Quality</span>
+    </h1>
+    <p class="hero-subtitle">
+      Analysis of NO₂, CO and SO₂ concentrations across
+      Ernakulam district using satellite remote sensing data
+      from the Copernicus Sentinel-5P mission — across
+      pre-COVID, COVID, and post-COVID periods.
+    </p>
+    <div class="hero-buttons">
+      <a href="#app" class="btn btn-primary">
+        ▶ Open Live Map
+      </a>
+      <a href="#study" class="btn btn-secondary">
+        Read the Study
+      </a>
+    </div>
+  </section>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-value">NO₂</div>
+      <div class="stat-label">Nitrogen Dioxide</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">CO</div>
+      <div class="stat-label">Carbon Monoxide</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">SO₂</div>
+      <div class="stat-label">Sulphur Dioxide</div>
+    </div>
+  </div>
+
+  <!-- APP SECTION -->
+  <section class="section" id="app">
+    <div class="section-header fade-in">
+      <span class="section-num">01 /</span>
+      <h2 class="section-title">Interactive Live Map</h2>
+    </div>
+    <div class="app-container fade-in">
+      <div class="app-toolbar">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <div class="app-url">
+          ee-aravindshibu20.projects.earthengine.app/view/april-2-maxyntra
+        </div>
+      </div>
+      <iframe
+        class="app-iframe"
+        src="https://ee-aravindshibu20.projects.earthengine.app/view/april-2-maxyntra"
+        allowfullscreen
+        loading="lazy"
+        title="Ernakulam Air Quality Map">
+      </iframe>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- POLLUTANTS SECTION -->
+  <section class="section" id="pollutants">
+    <div class="section-header fade-in">
+      <span class="section-num">02 /</span>
+      <h2 class="section-title">Pollutants Monitored</h2>
+    </div>
+    <div class="pollutants-grid">
+
+      <div class="pollutant-card no2 fade-in">
+        <div class="pollutant-symbol">NO₂</div>
+        <div class="pollutant-name">Nitrogen Dioxide</div>
+        <div class="pollutant-desc">
+          Primarily emitted from combustion processes
+          including vehicle engines and industrial
+          facilities. Irritates the lungs and lowers
+          resistance to respiratory infections.
+          Measured in mol/m².
+        </div>
+      </div>
+
+      <div class="pollutant-card co fade-in">
+        <div class="pollutant-symbol">CO</div>
+        <div class="pollutant-name">Carbon Monoxide</div>
+        <div class="pollutant-desc">
+          An important atmospheric trace gas for
+          understanding tropospheric chemistry.
+          Main sources include combustion of fossil
+          fuels, biomass burning, and atmospheric
+          oxidation of methane.
+        </div>
+      </div>
+
+      <div class="pollutant-card so2 fade-in">
+        <div class="pollutant-symbol">SO₂</div>
+        <div class="pollutant-name">Sulphur Dioxide</div>
+        <div class="pollutant-desc">
+          Released primarily from burning fossil fuels
+          containing sulfur. Adversely affects human
+          health and air quality, and contributes
+          to acid rain damaging ecosystems
+          and buildings.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- STUDY SECTION -->
+  <section class="section" id="study">
+    <div class="section-header fade-in">
+      <span class="section-num">03 /</span>
+      <h2 class="section-title">Study Overview</h2>
+    </div>
+
+    <div class="about-grid fade-in">
+      <div class="about-card">
+        <div class="card-icon">🛰️</div>
+        <div class="card-title">Satellite Data</div>
+        <div class="card-text">
+          Data collected using the TROPOMI instrument
+          aboard the Copernicus Sentinel-5P satellite,
+          launched in 2017. Provides daily global
+          coverage at 7×3.5 km spatial resolution
+          using Differential Optical Absorption
+          Spectroscopy (DOAS).
+        </div>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">🗺️</div>
+        <div class="card-title">Study Area</div>
+        <div class="card-text">
+          Ernakulam district, Kerala — the industrial
+          capital of the state with the third-highest
+          population. Known for dense population,
+          bustling vehicular traffic, and numerous
+          industries including the city of Kochi.
+        </div>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">⚙️</div>
+        <div class="card-title">Methodology</div>
+        <div class="card-text">
+          TROPOMI data accessed via Google Earth Engine
+          and Copernicus Open Access Hub. Processed
+          using GEE JavaScript API with spatial
+          filtering, temporal aggregation, and
+          IDW interpolation in QGIS for
+          ground-based data mapping.
+        </div>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Comparison</div>
+        <div class="card-text">
+          Ground-based monitoring data from Kerala
+          Pollution Control Board validated against
+          TROPOMI satellite observations. Analysis
+          covers three distinct periods — pre-COVID
+          (2019), COVID lockdown (2020),
+          and post-COVID (2023).
+        </div>
+      </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div style="margin-top: 3rem;">
+      <div class="timeline fade-in">
+        <div class="timeline-item">
+          <div class="timeline-year">2019</div>
+          <div class="timeline-label">Period 01</div>
+          <div class="timeline-title">Pre-COVID Baseline</div>
+          <div class="timeline-text">
+            Establishes baseline pollution levels
+            under normal urban and industrial
+            activity in Ernakulam district.
+            High NO₂ near traffic corridors
+            and industrial zones.
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2020</div>
+          <div class="timeline-label">Period 02</div>
+          <div class="timeline-title">COVID Lockdown</div>
+          <div class="timeline-text">
+            Significant reduction in pollutant
+            concentrations observed across all
+            three gases due to restricted
+            movement and reduced industrial
+            and transportation activity.
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-year">2023</div>
+          <div class="timeline-label">Period 03</div>
+          <div class="timeline-title">Post-COVID Recovery</div>
+          <div class="timeline-text">
+            Gradual rebound in pollution levels
+            as economic activity resumed.
+            Comparison reveals lasting changes
+            in emission patterns and identifies
+            persistent pollution hotspots.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TEAM SECTION -->
+  <section class="section" id="team">
+    <div class="section-header fade-in">
+      <span class="section-num">04 /</span>
+      <h2 class="section-title">Research Team</h2>
+    </div>
+    <div class="team-grid fade-in">
+      <div class="team-card">
+        <div class="team-avatar">AH</div>
+        <div class="team-name">Althaf Hussain</div>
+        <div class="team-id">AJC20CE011</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">AS</div>
+        <div class="team-name">Aravind Shibu</div>
+        <div class="team-id">AJC20CE021</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">GS</div>
+        <div class="team-name">Gopika S Nath</div>
+        <div class="team-id">AJC20CE037</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">AN</div>
+        <div class="team-name">Anoop S</div>
+        <div class="team-id">LAJC20CE079</div>
+      </div>
+    </div>
+    <div style="margin-top:2rem; text-align:center;" class="fade-in">
+      <p style="font-size:0.8rem; color:var(--muted); line-height:1.8;">
+        Department of Civil Engineering<br>
+        Amal Jyothi College of Engineering, Kanjirappally<br>
+        Affiliated to APJ Abdul Kalam Technological University · May 2024<br>
+        Guide: Asst. Prof. Mr. Ajai Thampy
+      </p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">AIRQUAL</div>
+    <p class="footer-text">
+      Analysis of Air Pollution using GIS and Remote Sensing.
+      Data sourced from Copernicus Sentinel-5P TROPOMI via
+      Google Earth Engine.
+    </p>
+    <p class="footer-bottom">
+      © 2024 Amal Jyothi College of Engineering ·
+      Department of Civil Engineering
+    </p>
+  </footer>
+
+  <script>
+    // Fade in on scroll
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document.querySelectorAll('.fade-in')
+      .forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
